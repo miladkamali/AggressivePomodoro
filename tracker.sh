@@ -90,8 +90,8 @@ project_task_exist(){
     [ ! -z `grep $1 $taskFile` ] && return 0 || return 1 
 }
 select_task_project(){
-    local project=$(select_project) || project=$(zenity --entry --title="project name" --text "add a name for project"|tr ' ' '_')
-    local task=$(select_task_for_project $project) || task=$(zenity --entry --title="add a task" --text "add a task name for $project"|tr ' ' '_')
+    project=$(select_project) || project=$(zenity --entry --title="project name" --text "add a name for project"|tr ' ' '_')
+    task=$(select_task_for_project $project) || task=$(zenity --entry --title="add a task" --text "add a task name for $project"|tr ' ' '_')
     $(project_task_exist "$project|$task") || echo "$project|$task" >> $taskFile
     echo "$project|$task"
 }
