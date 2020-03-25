@@ -8,7 +8,7 @@ workCycle=1500
 output=./times
 trigerFile=/tmp/stop
 stepTriger=/tmp/next
-refreshTime=10
+refreshTime=2
 
 check_command(){
     [ -f $trigerFile ] && return 1 || return 0
@@ -17,10 +17,11 @@ check_command(){
 check_skip(){
     [ -f $stepTriger ] && { rm $stepTriger; return 1; } || return 0
 }
+
 active_sleep(){
-    duration=$1
-    now=`date +%s`
-    endTime=`echo "$now + $duration"|bc`
+    local duration=$1
+    local now=`date +%s`
+    local endTime=`echo "$now + $duration"|bc`
     while [ $now -le $endTime ]
     do
         check_skip || return 1
@@ -43,46 +44,45 @@ continue_same_task(){
 
 
 select_project(){
-    projects=`cat $taskFile|cut -d '|' -f1|sort -u`
+    local projects=`cat $taskFile|cut -d '|' -f1|sort -u`
     [ -z "$projects" ] && return 1
-    selectedProject=`zenity --list --column="project" $projects`
+    local selectedProject=`zenity --list --column="project" $projects`
     [ ! -z $selectedProject ] && { echo $selectedProject; return 0;}|| return 1;
 }
 
 select_task_for_project(){
-    projectName=$1
-    tasks=`grep $projectName $taskFile|cut -d '|' -f2`
+    local projectName=$1
+    local tasks=`grep $projectName $taskFile|cut -d '|' -f2`
     [ -z "$tasks" ] && return 1
-    selectedTask=`zenity --list --column="task" $tasks`
+    local selectedTask=`zenity --list --column="task" $tasks`
     [ ! -z  $selectedTask ] && { echo $selectedTask; return 0;} || return 1;
 }
 
 long_break(){
-    endTime=$( expr `date +%s` + $longBreak)
-    now=`date +%s`
+    local now=`date +%s`
+    local endTime=$(($now + $longBreak))
     while [ $now -le $endTime ]
     do
-        now=`date +%s`
         active_sleep $refreshTime || return 1
-        remaingTime=$( expr $endTime - $now )
-        remaingtime=$( expr $remaingTime / 60 )
-        seconds=`echo "$endTime -$now - (60 * $remaingtime)" |bc`
-        zenity --warning --text="take a long break for $remaingtime minutes and $seconds seconds" --width=$width --height=$height --timeout=$refreshTime &
+        local remainingTime=$(($endTime - $now))
+        local remainingMinutes=$(($remainingTime / 60))
+        local seconds=$(($remainingTime % 60))
+        yad --fullscreen --text-info --text="take a long break for $remainingMinutes minutes and $seconds seconds" --timeout=$refreshTime &
+        now=`date +%s`
     done
-
 }
 
 short_break(){
-    endTime=$( expr `date +%s` + $shortBreak)
-    now=`date +%s`
+    local now=`date +%s`
+    local endTime=$(($now + $shortBreak))
     while [ $now -le $endTime ]
     do
-        now=`date +%s`
         active_sleep $refreshTime || return 1
-        remaingTime=$( expr $endTime - $now )
-        remaingtime=$( expr $remaingTime / 60 )
-        seconds=`echo "$endTime -$now - (60 * $remaingtime)" |bc`
-        zenity --warning --text="take a short break for $remaingtime minutes and $seconds seconds" --width=$width --height=$height --timeout=$refreshTime &
+        local remainingTime=$(($endTime - $now))
+        local remainingMinutes=$(($remainingTime / 60))
+        local seconds=$(($remainingTime % 60))
+        yad --fullscreen --text-info --text="take a short break for $remainingMinutes minutes and $seconds seconds" --timeout=$refreshTime &
+        now=`date +%s`
     done
 }
 
@@ -90,22 +90,20 @@ project_task_exist(){
     [ ! -z `grep $1 $taskFile` ] && return 0 || return 1 
 }
 select_task_project(){
-    project=$(select_project) || project=$(zenity --entry --title="project name" --text "add a name for project"|tr ' ' '_')
-    #[ -z $project ] && get_task
-    #echo "selected project name : $project"
-    task=$(select_task_for_project $project) || task=$(zenity --entry --title="add a task" --text "add a task name for $project"|tr ' ' '_')
-    #echo "selected task is : $task"
+    local project=$(select_project) || project=$(zenity --entry --title="project name" --text "add a name for project"|tr ' ' '_')
+    local task=$(select_task_for_project $project) || task=$(zenity --entry --title="add a task" --text "add a task name for $project"|tr ' ' '_')
     $(project_task_exist "$project|$task") || echo "$project|$task" >> $taskFile
     echo "$project|$task"
 }
 
 work_cycle(){
-    projectTask=$1
-    startTime=`date +%s`
+    local projectTask=$1
+    local startTime=`date +%s`
     active_sleep $workCycle
-    returnCode=$?
-    endTime=`date +%s`
-    echo "$1|$startTime|$endTime" >> $output
+    local returnCode=$?
+    local endTime=`date +%s`
+    local duration=`echo "$endTime - $startTime"|bc`
+    echo "$1|$startTime|$endTime|$(($duration / 60))m:$(($duration % 60))s|$(($duration / 900))p" >> $output
     return $returnCode
 }
 
